@@ -16,3 +16,7 @@ const storage = new CloudinaryStorage({
     resource_type: 'auto',
     },
 });
+
+const upload = multer({ storage: storage });
+
+module.exports = upload;    

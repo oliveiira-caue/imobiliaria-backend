@@ -14,6 +14,9 @@ app.get('/', (req, res) => {
 
 app.post('/upload', upload.single('midia'), (req, res) => {
     try {
+      if (!req.file) {
+            return res.status(400).json({ erro: 'Nenhum arquivo recebido. Verifique o nome do campo.' });
+        }
       res.json({ 
             mensagem: 'Upload feito com sucesso!',
             tipo_arquivo: req.file.mimetype,
