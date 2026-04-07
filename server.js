@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 const upload = require('./config/cloudinary');
 const Imovel = require('./models/Imovel');
+const nodemailer = require('nodemailer');
 
 const app = express();
 
@@ -61,7 +62,7 @@ app.post('/imoveis', upload.array('galeria', 15), async (req, res) => {
 
 app.get('/imoveis', async (req, res) => {
     try {
-      const imoveis = await Imovel.find().sort({ createdAt: -1 }); // O sort(-1) traz os mais recentes primeiro
+      const imoveis = await Imovel.find().sort({ createdAt: -1 });
         res.json(imoveis);
     } catch (error) {
         res.status(500).json({ erro: 'Erro ao buscar imóveis.' });
@@ -86,10 +87,42 @@ app.post('/contatos', async (req, res) => {
         } = req.body;
 
         const novoContato = await Contato.create({
-            nome, telefone, email,
-            melhor_horario, meio_contato_ideal, tipo_negocio,
-            mensagem, data_visita, hora_visita, imovel_id
+            nome, telefone, email, melhor_horario, meio_contato_ideal, 
+            tipo_negocio, mensagem, data_visita, hora_visita, imovel_id
         });
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail', // Vamos usar o Gmail para disparar
+            auth: {
+                user: process.env.EMAIL_SISTEMA, 
+                pass: process.env.SENHA_SISTEMA
+            }
+        });
+
+        let linkWhatsapp = '';
+        if (meio_contato_ideal === 'WhatsApp') {
+            const numeroLimpo = telefone.replace(/\D/g, '');
+           linkWhatsapp = `<br><br><a href="https://wa.me/55${numeroLimpo}" style="display: inline-block; background-color: #25D366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">Falar no WhatsApp agora</a>`;
+        }
+
+        const configuracaoEmail = {
+            from: process.env.EMAIL_SISTEMA,
+            to: 'caueadolfooliveira2k18@gmail.com',
+            subject: `🚨 Novo Interessado: ${nome} - ${tipo_negocio}`,
+            html: `
+                <h2>Você tem um novo lead no site!</h2>
+                <p><strong>Nome:</strong> ${nome}</p>
+                <p><strong>Telefone:</strong> ${telefone}</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <hr>
+                <p><strong>Preferência de Contato:</strong> ${meio_contato_ideal} (${melhor_horario})</p>
+                <p><strong>Mensagem:</strong> ${mensagem || 'Nenhuma mensagem extra.'}</p>
+                <p><strong>Visita Agendada:</strong> ${data_visita ? `${data_visita} às ${hora_visita}` : 'Não solicitou visita'}</p>
+                ${linkWhatsapp}
+            `
+        };
+
+        await transporter.sendMail(configuracaoEmail);
 
         res.status(201).json({ 
             mensagem: 'Obrigado! O seu pedido de contato foi enviado com sucesso.',

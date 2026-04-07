@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Cliente</title>
+    <style>
+        body { font-family: Arial; padding: 50px; text-align: center; }
+        button { padding: 15px 30px; background: #25D366; color: white; border: none; font-size: 18px; cursor: pointer; border-radius: 8px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Testando o envio de E-mail Automático</h2>
+    <p>Clique no botão abaixo para simular um cliente preenchendo o formulário do site.</p>
+    
+    <button onclick="simularEnvio()">Simular Cliente Pedindo Visita</button>
+
+    <script>
+        async function simularEnvio() {
+            const dadosDoCliente = {
+                nome: "Cauê Cliente Teste",
+                telefone: "91988887777",
+                email: "cliente.caue@gmail.com",
+                melhor_horario: "Tarde",
+                meio_contato_ideal: "WhatsApp",
+                tipo_negocio: "Locação",
+                mensagem: "Olá! Achei o apartamento lindo, gostaria de agendar uma visita o mais rápido possível.",
+                imovel_id: "69d502201179fa99b503ca4c" 
+            };
+
+            try {
+                const resposta = await fetch('http://localhost:5000/contatos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dadosDoCliente)
+                });
+
+                const resultado = await resposta.json();
+                
+                if(resposta.ok) {
+                    alert("Sucesso! " + resultado.mensagem + "\n\nAgora vá olhar a sua caixa de e-mail!");
+                } else {
+                    alert("Erro do servidor: " + resultado.erro);
+                }
+            } catch (erro) {
+                alert("Falha na conexão. O servidor está ligado?");
+            }
+        }
+    </script>
+</body>
+</html>
