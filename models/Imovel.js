@@ -2,12 +2,40 @@ const mongoose = require('mongoose');
 
 const ImovelSchema = new mongoose.Schema({
     titulo: { type: String, required: true },
+    descricao: { type: String, required: true },
+    tipo_imovel: { 
+        type: String, 
+        enum: ['Apartamento', 'Casa', 'Sala Comercial', 'Terreno', 'Galpão'], 
+        required: true 
+    },
+    finalidade: { type: String, enum: ['Venda', 'Locação'], required: true },
+    destaque: { type: Boolean, default: false },
+
     preco: { type: Number, required: true },
-    quartos: { type: Number, required: true },
-    url_da_midia: { type: String, required: true },
-    tipo_arquivo: { type: String }
-    }, {
-        timestamps: true
-    });
+    valor_condominio: { type: Number },
+    iptu: { type: Number },
+
+    area_util: { type: Number },
+    quartos: { type: Number },
+    suites: { type: Number },
+    banheiros: { type: Number },
+    vagas: { type: Number },
+
+    endereco: { type: String, required: true },
+    bairro: { type: String, required: true },
+    cidade: { type: String, default: 'Belém' },
+    estado: { type: String, default: 'PA' },
+    latitude: { type: Number },
+    longitude: { type: Number },
+
+    comodidades_imovel: [{ type: String }],
+    comodidades_condominio: [{ type: String }],
+
+    visualizacoes: { type: Number, default: 0 },
+    galeria: [{ type: String, required: true }] 
+    
+}, { 
+    timestamps: true 
+});
 
 module.exports = mongoose.model('Imovel', ImovelSchema);

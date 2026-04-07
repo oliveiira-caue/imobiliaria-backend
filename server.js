@@ -1,3 +1,4 @@
+const Contato = require('./models/Contato');
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -20,19 +21,32 @@ app.get('/', (req, res) => {
 });
 
 
-app.post('/imoveis', upload.single('midia'), async (req, res) => {
+app.post('/imoveis', upload.array('galeria', 15), async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ erro: 'A mídia (foto/vídeo) é obrigatória.' });
-        }
-        const { titulo, preco, quartos } = req.body;
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ erro: 'Envie pelo menos uma foto.' });
+        }  
+        const { 
+            titulo, descricao, tipo_imovel, finalidade, destaque,
+            preco, valor_condominio, iptu,
+            area_util, quartos, suites, banheiros, vagas,
+            endereco, bairro, latitude, longitude,
+            comodidades_imovel, comodidades_condominio 
+        } = req.body;
+
+        const linksDasFotos = req.files.map(file => file.path);
 
         const novoImovel = await Imovel.create({
-            titulo: titulo,
-            preco: preco,
-            quartos: quartos,
-            url_da_midia: req.file.path,
-            tipo_arquivo: req.file.mimetype
+            titulo, descricao, tipo_imovel, finalidade, 
+            destaque: destaque === 'true' || destaque === true,
+            preco, valor_condominio, iptu,
+            area_util, quartos, suites, banheiros, vagas,
+            endereco, bairro, 
+            latitude: parseFloat(latitude), 
+            longitude: parseFloat(longitude),
+            comodidades_imovel: comodidades_imovel ? comodidades_imovel.split(',') : [],
+            comodidades_condominio: comodidades_condominio ? comodidades_condominio.split(',') : [],
+            galeria: linksDasFotos
         });
 
         res.status(201).json({
@@ -51,6 +65,40 @@ app.get('/imoveis', async (req, res) => {
         res.json(imoveis);
     } catch (error) {
         res.status(500).json({ erro: 'Erro ao buscar imóveis.' });
+    }
+});
+
+app.patch('/imoveis/:id/visualizacao', async (req, res) => {
+    try {
+        await Imovel.findByIdAndUpdate(req.params.id, { $inc: { visualizacoes: 1 } });
+        res.status(200).send();
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao contar visualização.' });
+    }
+});
+
+app.post('/contatos', async (req, res) => {
+    try {
+        const { 
+            nome, telefone, email, 
+            melhor_horario, meio_contato_ideal, tipo_negocio, 
+            mensagem, data_visita, hora_visita, imovel_id 
+        } = req.body;
+
+        const novoContato = await Contato.create({
+            nome, telefone, email,
+            melhor_horario, meio_contato_ideal, tipo_negocio,
+            mensagem, data_visita, hora_visita, imovel_id
+        });
+
+        res.status(201).json({ 
+            mensagem: 'Obrigado! O seu pedido de contato foi enviado com sucesso.',
+            contato: novoContato 
+        });
+
+    } catch (error) {
+        console.error("Erro ao salvar contato:", error);
+        res.status(500).json({ erro: 'Não foi possível enviar o seu contato agora.' });
     }
 });
 
