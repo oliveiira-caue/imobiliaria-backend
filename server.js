@@ -6,11 +6,18 @@ require('dotenv').config();
 const upload = require('./config/cloudinary');
 const Imovel = require('./models/Imovel');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const Usuario = require('./models/Usuario');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 mongoose.connect(process.env.MONGO_URI)
@@ -132,6 +139,60 @@ app.post('/contatos', async (req, res) => {
     } catch (error) {
         console.error("Erro ao salvar contato:", error);
         res.status(500).json({ erro: 'Não foi possível enviar o seu contato agora.' });
+    }
+});
+
+app.post('/admin/cadastrar', async (req, res) => {
+    try {
+        const { email, senha } = req.body;
+
+        const usuarioExiste = await Usuario.findOne({ email });
+        if (usuarioExiste) {
+            return res.status(400).json({ erro: 'Este e-mail já está cadastrado.' });
+        }
+        
+        const salt = await bcrypt.genSalt(10);
+        const senhaCriptografada = await bcrypt.hash(senha, salt);
+
+        const novoUsuario = await Usuario.create({
+            email,
+            senha: senhaCriptografada
+        });
+
+        res.status(201).json({ mensagem: 'Conta de administrador criada com sucesso!' });
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao criar conta de administrador.' });
+    }
+});
+
+app.post('/admin/login', async (req, res) => {
+    try {
+        const { email, senha } = req.body;
+
+        const usuario = await Usuario.findOne({ email });
+        if (!usuario) {
+            return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
+        }
+
+        const senhaCorreta = await bcrypt.compare(senha, usuario.senha);
+        if (!senhaCorreta) {
+            return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
+        }
+
+        const token = jwt.sign(
+            { id: usuario._id }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '24h' }
+        );
+
+        res.status(200).json({
+            mensagem: 'Login efetuado com sucesso!',
+            token: token
+
+        });
+
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao processar o login.' });
     }
 });
 
