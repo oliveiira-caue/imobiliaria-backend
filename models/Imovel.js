@@ -10,6 +10,15 @@ const ImovelSchema = new mongoose.Schema({
     },
     finalidade: { type: String, enum: ['Venda', 'Locação'], required: true },
     destaque: { type: Boolean, default: false },
+    status: { 
+    type: String, 
+    enum: ['Disponível', 'Vendido', 'Alugado'], 
+    default: 'Disponível' 
+    },
+
+    mobiliado: { type: Boolean, default: false },
+    tipo_finalidade: { type: String, enum: ['Residencial', 'Comercial'], required: true },
+    em_condominio: { type: Boolean, default: false },
 
     preco: { type: Number, required: true },
     valor_condominio: { type: Number },

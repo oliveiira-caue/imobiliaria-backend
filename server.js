@@ -9,6 +9,7 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Usuario = require('./models/Usuario');
+const auth = require('./middleware/auth');
 
 const app = express();
 
@@ -69,10 +70,52 @@ app.post('/imoveis', upload.array('galeria', 15), async (req, res) => {
 
 app.get('/imoveis', async (req, res) => {
     try {
-      const imoveis = await Imovel.find().sort({ createdAt: -1 });
+        const { 
+            tipo, finalidade, cidade, bairro, 
+            minPreco, maxPreco, 
+            minArea, maxArea,
+            quartos, banheiros, suites, vagas,
+            mobiliado, em_condominio, tipo_finalidade
+        } = req.query;
+
+        let filtros = {};
+
+        if (tipo) filtros.tipo_imovel = tipo;
+        if (finalidade) filtros.finalidade = finalidade;
+        if (cidade) filtros.cidade = new RegExp(cidade, 'i');
+        if (bairro) filtros.bairro = new RegExp(bairro, 'i');
+        if (tipo_finalidade) filtros.tipo_finalidade = tipo_finalidade;
+
+        if (minPreco || maxPreco) {
+            filtros.preco = {};
+            if (minPreco) filtros.preco.$gte = Number(minPreco);
+            if (maxPreco) filtros.preco.$lte = Number(maxPreco);
+        }
+
+        if (minArea || maxArea) {
+            filtros.area_util = {};
+            if (minArea) filtros.area_util.$gte = Number(minArea);
+            if (maxArea) filtros.area_util.$lte = Number(maxArea);
+        }
+
+        if (quartos) filtros.quartos = Number(quartos) >= 4 ? { $gte: 4 } : Number(quartos);
+        if (banheiros) filtros.banheiros = Number(banheiros) >= 4 ? { $gte: 4 } : Number(banheiros);
+        if (suites) filtros.suites = Number(suites) >= 4 ? { $gte: 4 } : Number(suites);
+
+        if (vagas) filtros.vagas = Number(vagas) >= 3 ? { $gte: 3 } : Number(vagas);
+
+        if (mobiliado === 'true') filtros.mobiliado = true;
+        if (mobiliado === 'false') filtros.mobiliado = false;
+        
+        if (em_condominio === 'true') filtros.em_condominio = true;
+        if (em_condominio === 'false') filtros.em_condominio = false;
+
+        const imoveis = await Imovel.find(filtros).sort({ createdAt: -1 });
+        
         res.json(imoveis);
+
     } catch (error) {
-        res.status(500).json({ erro: 'Erro ao buscar imóveis.' });
+        res.status(500).json({ erro: 'Erro ao filtrar imóveis.' });
     }
 });
 
@@ -165,7 +208,7 @@ app.post('/admin/cadastrar', async (req, res) => {
     }
 });
 
-app.post('/admin/login', async (req, res) => {
+app.post('/imoveis', auth, upload.array('galeria', 15), async (req, res) => {
     try {
         const { email, senha } = req.body;
 
@@ -193,6 +236,81 @@ app.post('/admin/login', async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ erro: 'Erro ao processar o login.' });
+    }
+});
+
+app.get('/admin/contatos', auth, async (req, res) => {
+    try {
+        const contatos = await Contato.find().sort({ createdAt: -1 });
+        res.json(contatos);
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao buscar contatos.' });
+    }
+});
+
+app.delete('/imoveis/:id', auth, async (req, res) => {
+    try {
+        await Imovel.findByIdAndDelete(req.params.id);
+        res.json({ mensagem: 'Imóvel removido com sucesso!' });
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao remover imóvel.' });
+    }
+});
+
+app.put('/imoveis/:id', auth, async (req, res) => {
+    try {
+        const imovelAtualizado = await Imovel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.json({ mensagem: 'Imóvel atualizado!', imovel: imovelAtualizado });
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao atualizar imóvel.' });
+    }
+});
+
+app.patch('/imoveis/:id/fotos', auth, upload.array('galeria', 10), async (req, res) => {
+    try {
+        const imovel = await Imovel.findById(req.params.id);
+        if (!imovel) return res.status(404).json({ erro: 'Imóvel não encontrado.' });
+
+        const novosLinks = req.files.map(file => file.path);
+
+        imovel.galeria.push(...novosLinks);
+        await imovel.save();
+
+        res.json({ mensagem: 'Fotos adicionadas!', galeria: imovel.galeria });
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao adicionar fotos.' });
+    }
+});
+
+app.patch('/imoveis/:id/remover-foto', auth, async (req, res) => {
+    try {
+        const { urlDaFoto } = req.body;
+
+        const imovel = await Imovel.findById(req.params.id);
+
+        imovel.galeria = imovel.galeria.filter(foto => foto !== urlDaFoto);
+
+        await imovel.save();
+        res.json({ mensagem: 'Foto removida da galeria!', galeria: imovel.galeria });
+
+        } catch (error) {
+        res.status(500).json({ erro: 'Erro ao remover foto.' });
+    }
+});
+
+app.patch('/imoveis/:id/status', auth, async (req, res) => {
+    try {
+        const { novoStatus } = req.body;
+
+        const imovel = await Imovel.findByIdAndUpdate(
+            req.params.id, 
+            { status: novoStatus }, 
+            { new: true }
+        );
+
+        res.json({ mensagem: `Imóvel agora está ${novoStatus}!`, imovel });
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao alterar status do imóvel.' });
     }
 });
 
