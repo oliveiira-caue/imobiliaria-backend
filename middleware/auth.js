@@ -1,16 +1,26 @@
 const jwt = require('jsonwebtoken');
 
-module.exports = (req, res, next) => {
+module.exports = function (req, res, next) {
+
     const token = req.header('x-auth-token');
 
     if (!token) {
-        return res.status(401).json({ erro: 'Acesso negado. Faça login para continuar.' });
+        console.log("⚠️ Bloqueado: Tentativa de acesso sem token.");
+        return res.status(401).json({ erro: 'Acesso negado. Por favor, faça login.' });
     }
 
     try {
+
         const decodificado = jwt.verify(token, process.env.JWT_SECRET);
+        
+
         req.usuario = decodificado;
-        } catch (error) {
-        res.status(400).json({ erro: 'Token inválido ou expirado.' });
+        
+
+        next(); 
+    } catch (ex) {
+
+        console.log("❌ Erro: Token inválido ou expirado.");
+        res.status(400).json({ erro: 'Sua sessão expirou. Faça login novamente.' });
     }
 };
